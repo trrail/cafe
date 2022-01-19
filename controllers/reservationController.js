@@ -66,18 +66,17 @@ exports.reserve_post = [
                         Table.findById(req.params.id).exec(callback);
                     },
                     todays_reservations: function (callback){
-                        Reservation.findOne({date: req.body.date}).populate('table').exec(callback)
+                        Reservation.findOne({date: req.body.date, table: req.params.id})
+                            .populate('table')
+                            .exec(callback)
                     }
                 }, function (err, results) {
                     if (err) {
                         debug('Find table by ID error', err);
                         return next(err);
                     }
-                    let do_it = false;
-                    if (results.todays_reservations !== null) {
-                        if (results.todays_reservations.table.id !== results.table.id)
-                            do_it = true;
-                    } else
+                    let do_it = false
+                    if (results.todays_reservations === null)
                         do_it = true;
 
                     if (do_it) {
