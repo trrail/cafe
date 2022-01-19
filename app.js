@@ -12,8 +12,7 @@ const app = express();
 
 // Настройка и подключение к БД
 const mongoose = require('mongoose');
-var dev_db_uri = 'mongodb+srv://trail:461017971@cafe.pzdd0.mongodb.net/cafe?retryWrites=true&w=majority';
-const mongoDB = process.env.MONGODB_URI || dev_db_uri;
+const mongoDB = 'mongodb+srv://trail:461017971@cafe.pzdd0.mongodb.net/cafe?retryWrites=true&w=majority';
 mongoose.connect(mongoDB);
 mongoose.Promise = global.Promise;
 mongoose.connection.on('error', console.error.bind(console, 'MongoDB connection error:'));
@@ -28,7 +27,7 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(compression);
+app.use(compression());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
