@@ -1,0 +1,10 @@
+extends layout
+
+block content
+    h1= title
+    ul
+        each food in food_list
+            li
+                h4= food.name
+                p #{food.description}
+                p Вес: #{food.weight} Цена #{food.price}

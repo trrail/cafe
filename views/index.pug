@@ -1,0 +1,14 @@
+extends layout
+
+block content
+  h1= title
+  if error
+    p Возникли ошибки в получение контента.
+  else
+    p На данный момент в нашем ресторане:
+
+    ul
+      li #[strong Зарезервированных мест:] !{data.reservation_count}
+      li #[strong Доступных столов:] !{data.table_count}
+      li #[strong Официантов, готовых вас обслужить:] !{data.waiters_count}
+      li #[strong Общее количество блюд:] !{data.menu_count}
