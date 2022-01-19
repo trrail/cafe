@@ -5,7 +5,7 @@ block content
     ul
         each table in free_tables
             li
-                a(href='/catalog/tables/' + table._id) #{table.description}
+                a(href='/catalog/' + type + '_tables/' + table._id) #{table.description}
                 p Общее количество мест - #{table.count}
         else
-            p Нет свободных столиков
+            p Нет #{p_tables} столиков

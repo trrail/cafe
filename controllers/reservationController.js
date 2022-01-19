@@ -31,12 +31,16 @@ exports.index = function (req, res) {
 };
 
 exports.free_tables = function(req, res, next) {
-    Table.find({isReserved: false})
+    Table.find()
         .exec(function (err, free_tables) {
             if (err) {
                 debug('Find tables error', err);
                 return next(err);}
-            res.render('free_tables', {title: 'Свободные столики', free_tables: free_tables})
+            res.render('free_tables', {title: 'Свободные столики',
+                free_tables: free_tables,
+                type: 'free',
+                p_tables: 'свободных'
+            })
         })
 };
 
@@ -46,7 +50,6 @@ exports.reserve_get = function (req, res, next) {
 
 exports.reserve_post = [
     body('date', 'Неверная дата').trim().isDate().escape(),
-    body('time', 'Неверное время').trim().escape(),
     body('name', 'Имя должно быть длинее 4 букв').isLength({min: 4}),
     (req, res, next) => {
         let errors = validationResult(req);
@@ -55,37 +58,50 @@ exports.reserve_post = [
             res.render('reserve_form', { title: 'Резервирование стола', errors: errors.array()});
         }
         else {
-            let new_time = req.body.time.split(':');
-            let hours = parseInt(new_time[0]);
-            let minutes = parseInt(new_time[1]);
             let now_date = Date.now();
-            let date = new Date(req.body.date);
-            date.setHours(hours);
-            date.setMinutes(minutes);
-            if (now_date < date) {
+            let res_date = new Date(req.body.date);
+            if (now_date < res_date) {
                 async.parallel({
                     table: function (callback) {
                         Table.findById(req.params.id).exec(callback);
+                    },
+                    todays_reservations: function (callback){
+                        Reservation.findOne({date: req.body.date}).populate('table').exec(callback)
                     }
                 }, function (err, results) {
                     if (err) {
                         debug('Find table by ID error', err);
                         return next(err);
                     }
-                    let reserve = new Reservation({
-                        table: results.table,
-                        name: req.body.name,
-                        date: req.body.date
-                    });
-                    results.table.isReserved = true;
-                    results.table.save()
-                    reserve.save(function (err) {
-                        if (err) {
-                            debug('Reserve save error', err);
-                            return next(err);
-                        }
-                        res.render('reserve_status', {title: 'Столик забронирован!'});
-                    });
+                    let do_it = false;
+                    if (results.todays_reservations !== null) {
+                        if (results.todays_reservations.table.id !== results.table.id)
+                            do_it = true;
+                    } else
+                        do_it = true;
+
+                    if (do_it) {
+                        let reserve = new Reservation({
+                            table: results.table,
+                            name: req.body.name,
+                            date: req.body.date
+                        });
+                        results.table.isReserved = true;
+                        results.table.reserve_count += 1;
+                        results.table.save()
+                        reserve.save(function (err) {
+                            if (err) {
+                                debug('Reserve save error', err);
+                                return next(err);
+                            }
+                            res.render('reserve_status', {title: 'Столик забронирован!'});
+                        });
+                    }
+                    else
+                        res.render('reserve_form', {
+                            title: 'Резервирование стола',
+                            errors: [{msg: 'Стол уже забронирован'}]
+                        });
                 })
             }
             else
@@ -96,28 +112,20 @@ exports.reserve_post = [
 ];
 
 exports.del_reserve_get = function (req, res, next){
-    async.parallel({
-        reserved_tables: function (callback) {
-            Table.countDocuments({isReserved: true}, callback)
-        }
-    }, function (err, results) {
-        if (err) {
-            debug('Find reserved tables count error', err);
-            return next(err);}
-        if (results.reserved_tables > 0)
-            res.render('del_reserve', {title: 'Отменить бронирование'});
-        else
-            res.render('reserve_status', {title: 'Ни один из столов не зарезервирован!'})
-    })
+    res.render('del_reserve', {title: 'Отменить бронирование'});
 };
 
 exports.del_reserve_post = [
-    body('name', 'Введите коректное имя бронирования').isLength(4),
+    body('date', 'Неверная дата').trim().isDate().escape(),
+    body('name', 'Введите коректное имя бронирования').isLength({min: 4}),
     (req, res, next) => {
         var table = 0;
         async.parallel({
             reserve: function (callback) {
-                Reservation.findOne({name: req.body.name}).populate('table').exec(callback)
+                Reservation.findOne({name: req.body.name, date: req.body.date})
+                    .populate('table')
+                    .exec(callback)
+
             }
         }, function (err, results) {
             if (err) {
@@ -125,7 +133,9 @@ exports.del_reserve_post = [
                 return next(err);
             }
             if (results.reserve !== null) {
-                results.reserve.table.isReserved = false;
+                results.reserve.table.reserve_count -= 1;
+                if (results.reserve.table.reserve_count === 0)
+                    results.reserve.table.isReserved = false;
                 results.reserve.table.save();
                 results.reserve.remove();
                 res.render('reserve_status', {title: 'Бронирование успешно отменено!'});
@@ -135,3 +145,17 @@ exports.del_reserve_post = [
         });
     }
 ];
+
+exports.reserved_tables = function(req, res, next) {
+    Table.find({isReserved: true})
+        .exec(function (err, free_tables) {
+            if (err) {
+                debug('Find tables error', err);
+                return next(err);}
+            res.render('free_tables', {title: 'Занятые столики',
+                free_tables: free_tables,
+                type: 'reserved',
+                p_tables: 'зерезервированных'
+            })
+        })
+};

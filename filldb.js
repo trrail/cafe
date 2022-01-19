@@ -11,36 +11,16 @@ mongoose.Promise = global.Promise;
 mongoose.connection.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
 let tables = [];
-let reservations = [];
 let waiters = [];
 let menu = [];
 
-function reservationCreate(table, email, date,callback){
-    let info = {
-        table: table,
-        email: email,
-        date: date
-    };
-
-    let reservation = new Reservation(info);
-    reservation.save(function (err) {
-        if (err) {
-            console.log('Error creating reservation: ' + reservation);
-            callback(err, null);
-            return;
-        }
-        console.log('New reservation: ' + reservation);
-        reservations.push(reservation);
-        callback(null, reservation);
-    });
-}
-
-function tableCreate(description, waiter, count, callback){
+function tableCreate(description, waiter, count, reserve_count, callback){
     let table = new Table({
         description: description,
         isReserved: false,
         waiter: waiter,
-        count: count
+        count: count,
+        reserve_count: reserve_count
     });
     table.save(function (err) {
         if (err) {
@@ -102,19 +82,19 @@ function createWaiters(cb){
 function createTables(cb){
     async.parallel([
         function (callback){
-            tableCreate('У окна', waiters[0], 2, callback)
+            tableCreate('У окна', waiters[0], 2, 0, callback)
         },
         function (callback){
-            tableCreate('Возле камина', waiters[1], 4, callback)
+            tableCreate('Возле камина', waiters[1], 4, 0, callback)
         },
         function (callback){
-            tableCreate('По центру', waiters[2], 2, callback)
+            tableCreate('По центру', waiters[2], 2, 0, callback)
         },
         function (callback){
-            tableCreate('Возле бара', waiters[3], 3, callback)
+            tableCreate('Возле бара', waiters[3], 3, 0, callback)
         },
         function (callback){
-            tableCreate('У окна', waiters[2], 2, callback)
+            tableCreate('У окна', waiters[2], 2, 0, callback)
         }
     ], cb);
 }
